@@ -179,12 +179,6 @@ private fun KPropertyImpl.Accessor<*, *>.computeCallerForAccessor(isGetter: Bool
         return ThrowingCaller
     }
 
-    fun isInsideClassCompanionObject(): Boolean {
-        val possibleCompanionObject = property.descriptor.containingDeclaration
-        return DescriptorUtils.isCompanionObject(possibleCompanionObject) &&
-                !DescriptorUtils.isInterface(possibleCompanionObject.containingDeclaration)
-    }
-
     fun isInsideJvmInterfaceCompanionObject(): Boolean {
         val possibleCompanionObject = property.descriptor.containingDeclaration
         return DescriptorUtils.isCompanionObject(possibleCompanionObject) &&
@@ -198,23 +192,14 @@ private fun KPropertyImpl.Accessor<*, *>.computeCallerForAccessor(isGetter: Bool
         return JvmProtoBufUtil.isMovedFromInterfaceCompanion(propertyDescriptor.proto)
     }
 
-    fun isJvmStaticProperty() =
-        property.descriptor.annotations.findAnnotation(JVM_STATIC) != null
+    fun isJvmStaticProperty(): Boolean =
+        property.descriptor.annotations.hasAnnotation(JVM_STATIC)
 
-    fun isNotNullProperty() =
+    fun isNotNullProperty(): Boolean =
         !TypeUtils.isNullableType(property.descriptor.type)
 
     fun computeFieldCaller(field: Field): Caller<Field> = when {
-        isInsideClassCompanionObject() || isInsideInterfaceCompanionObjectWithJvmField() -> {
-            val klass = (descriptor.containingDeclaration as ClassDescriptor).toJavaClass()!!
-            if (isGetter)
-                if (isBound) CallerImpl.BoundClassCompanionFieldGetter(field, klass)
-                else CallerImpl.ClassCompanionFieldGetter(field, klass)
-            else
-                if (isBound) CallerImpl.BoundClassCompanionFieldSetter(field, klass)
-                else CallerImpl.ClassCompanionFieldSetter(field, klass)
-        }
-        !Modifier.isStatic(field.modifiers) ->
+        isInsideInterfaceCompanionObjectWithJvmField() || !Modifier.isStatic(field.modifiers) ->
             if (isGetter)
                 if (isBound) CallerImpl.BoundInstanceFieldGetter(field, property.boundReceiver)
                 else CallerImpl.InstanceFieldGetter(field)
