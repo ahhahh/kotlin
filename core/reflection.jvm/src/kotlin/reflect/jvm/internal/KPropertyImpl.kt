@@ -24,6 +24,7 @@ import kotlin.reflect.jvm.internal.JvmPropertySignature.*
 import kotlin.reflect.jvm.internal.calls.Caller
 import kotlin.reflect.jvm.internal.calls.CallerImpl
 import kotlin.reflect.jvm.internal.calls.ThrowingCaller
+import kotlin.reflect.jvm.internal.calls.createInlineClassAwareCallerIfNeeded
 
 internal abstract class KPropertyImpl<out R> private constructor(
     override val container: KDeclarationContainerImpl,
@@ -198,7 +199,7 @@ private fun KPropertyImpl.Accessor<*, *>.computeCallerForAccessor(isGetter: Bool
     fun isNotNullProperty(): Boolean =
         !TypeUtils.isNullableType(property.descriptor.type)
 
-    fun computeFieldCaller(field: Field): Caller<Field> = when {
+    fun computeFieldCaller(field: Field): CallerImpl<Field> = when {
         isInsideInterfaceCompanionObjectWithJvmField() || !Modifier.isStatic(field.modifiers) ->
             if (isGetter)
                 if (isBound) CallerImpl.FieldGetter.BoundInstance(field, property.boundReceiver)
@@ -276,5 +277,5 @@ private fun KPropertyImpl.Accessor<*, *>.computeCallerForAccessor(isGetter: Bool
             return if (isBound) CallerImpl.Method.BoundInstance(accessor, property.boundReceiver)
             else CallerImpl.Method.Instance(accessor)
         }
-    }
+    }.createInlineClassAwareCallerIfNeeded(descriptor)
 }
