@@ -35,6 +35,8 @@ import org.jetbrains.kotlin.progress.CompilationCanceledStatus
 import java.io.File
 import java.util.*
 
+val DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET = setOf("kt", "kts")
+
 abstract class IncrementalCompilerRunner<
     Args : CommonCompilerArguments,
     CacheManager : IncrementalCachesManager<*>
@@ -50,6 +52,7 @@ abstract class IncrementalCompilerRunner<
     protected val cacheDirectory = File(workingDir, cacheDirName)
     protected val dirtySourcesSinceLastTimeFile = File(workingDir, DIRTY_SOURCES_FILE_NAME)
     protected val lastBuildInfoFile = File(workingDir, LAST_BUILD_INFO_FILE_NAME)
+    protected open val kotlinSourceFilesExtensions: Set<String> = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET
 
     protected abstract fun isICEnabled(): Boolean
     protected abstract fun createCacheManager(args: Args): CacheManager
@@ -85,7 +88,7 @@ abstract class IncrementalCompilerRunner<
             if (providedChangedFiles == null) {
                 caches.inputsCache.sourceSnapshotMap.compareAndUpdate(allSourceFiles)
             }
-            val allKotlinFiles = allSourceFiles.filter { it.isKotlinFile() }
+            val allKotlinFiles = allSourceFiles.filter { it.isKotlinFile(kotlinSourceFilesExtensions) }
             return compileIncrementally(args, caches, allKotlinFiles, CompilationMode.Rebuild(), messageCollector)
         }
 
@@ -281,8 +284,8 @@ abstract class IncrementalCompilerRunner<
         changedFiles: ChangedFiles.Known
     ): DirtyData {
         val removedClasses = HashSet<String>()
-        val dirtyFiles = changedFiles.modified.filterTo(HashSet()) { it.isKotlinFile() }
-        val removedFiles = changedFiles.removed.filterTo(HashSet()) { it.isKotlinFile() }
+        val dirtyFiles = changedFiles.modified.filterTo(HashSet()) { it.isKotlinFile(kotlinSourceFilesExtensions) }
+        val removedFiles = changedFiles.removed.filterTo(HashSet()) { it.isKotlinFile(kotlinSourceFilesExtensions) }
 
         val existingClasses = classesFqNames(dirtyFiles)
         val previousClasses = caches.platformCache
