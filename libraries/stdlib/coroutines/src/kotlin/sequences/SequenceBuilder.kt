@@ -21,7 +21,7 @@ import kotlin.coroutines.intrinsics.*
  * @sample samples.collections.Sequences.Building.buildFibonacciSequence
  */
 @SinceKotlin("1.3")
-public fun <T> sequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iterator(builderAction) }
+public fun <T> sequence(builderAction: suspend YieldScope<T>.() -> Unit): Sequence<T> = Sequence { iterator(builderAction) }
 
 @SinceKotlin("1.3")
 @Deprecated("Use sequence instead.", ReplaceWith("sequence(builderAction)"), level = DeprecationLevel.WARNING)
@@ -34,7 +34,7 @@ public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Uni
  * @sample samples.collections.Iterables.Building.iterable
  */
 @SinceKotlin("1.3")
-public fun <T> iterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> {
+public fun <T> iterator(builderAction: suspend YieldScope<T>.() -> Unit): Iterator<T> {
     val iterator = SequenceBuilderIterator<T>()
     iterator.nextStep = builderAction.createCoroutineUnintercepted(receiver = iterator, completion = iterator)
     return iterator
@@ -45,7 +45,7 @@ public fun <T> iterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): I
 public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> = iterator(builderAction)
 
 /**
- * Builder for a [Sequence] or an [Iterator], provides [yield] and [yieldAll] suspension functions.
+ * The scope for yielding values of a [Sequence] or an [Iterator], provides [yield] and [yieldAll] suspension functions.
  *
  * @see sequence
  * @see iterator
@@ -55,7 +55,7 @@ public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Uni
  */
 @RestrictsSuspension
 @SinceKotlin("1.3")
-public abstract class SequenceBuilder<in T> internal constructor() {
+public abstract class YieldScope<in T> internal constructor() {
     /**
      * Yields a value to the [Iterator] being built.
      *
@@ -93,6 +93,9 @@ public abstract class SequenceBuilder<in T> internal constructor() {
     public suspend fun yieldAll(sequence: Sequence<T>) = yieldAll(sequence.iterator())
 }
 
+@Deprecated("Use YieldScope class instead.", ReplaceWith("YieldScope<T>"))
+public typealias SequenceBuilder<T> = YieldScope<T>
+
 private typealias State = Int
 
 private const val State_NotReady: State = 0
@@ -102,7 +105,7 @@ private const val State_Ready: State = 3
 private const val State_Done: State = 4
 private const val State_Failed: State = 5
 
-private class SequenceBuilderIterator<T> : SequenceBuilder<T>(), Iterator<T>, Continuation<Unit> {
+private class SequenceBuilderIterator<T> : YieldScope<T>(), Iterator<T>, Continuation<Unit> {
     private var state = State_NotReady
     private var nextValue: T? = null
     private var nextIterator: Iterator<T>? = null
