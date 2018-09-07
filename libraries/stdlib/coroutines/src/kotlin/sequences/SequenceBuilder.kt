@@ -4,7 +4,7 @@
  */
 
 @file:kotlin.jvm.JvmMultifileClass
-@file:kotlin.jvm.JvmName("SequenceBuilderKt")
+@file:kotlin.jvm.JvmName("SequenceBuilderKt") // TODO: Merge into SequencesKt
 
 package kotlin.sequences
 
@@ -21,7 +21,11 @@ import kotlin.coroutines.intrinsics.*
  * @sample samples.collections.Sequences.Building.buildFibonacciSequence
  */
 @SinceKotlin("1.3")
-public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { buildIterator(builderAction) }
+public fun <T> sequenceFrom(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iteratorFrom(builderAction) }
+
+@SinceKotlin("1.3")
+@Deprecated("Use sequenceFrom instead.", ReplaceWith("sequenceFrom(builderAction)"), level = DeprecationLevel.WARNING)
+public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iteratorFrom(builderAction) }
 
 /**
  * Builds an [Iterator] lazily yielding values one by one.
@@ -30,17 +34,21 @@ public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Uni
  * @sample samples.collections.Iterables.Building.iterable
  */
 @SinceKotlin("1.3")
-public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> {
+public fun <T> iteratorFrom(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> {
     val iterator = SequenceBuilderIterator<T>()
     iterator.nextStep = builderAction.createCoroutineUnintercepted(receiver = iterator, completion = iterator)
     return iterator
 }
 
+@SinceKotlin("1.3")
+@Deprecated("Use iteratorFrom instead.", ReplaceWith("iteratorFrom(builderAction)"), level = DeprecationLevel.WARNING)
+public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> = iteratorFrom(builderAction)
+
 /**
  * Builder for a [Sequence] or an [Iterator], provides [yield] and [yieldAll] suspension functions.
  *
- * @see buildSequence
- * @see buildIterator
+ * @see sequenceFrom
+ * @see iteratorFrom
  *
  * @sample samples.collections.Sequences.Building.buildSequenceYieldAll
  * @sample samples.collections.Sequences.Building.buildFibonacciSequence
