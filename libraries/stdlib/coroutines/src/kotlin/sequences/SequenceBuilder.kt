@@ -21,11 +21,11 @@ import kotlin.coroutines.intrinsics.*
  * @sample samples.collections.Sequences.Building.buildFibonacciSequence
  */
 @SinceKotlin("1.3")
-public fun <T> sequenceFrom(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iteratorFrom(builderAction) }
+public fun <T> sequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iterator(builderAction) }
 
 @SinceKotlin("1.3")
-@Deprecated("Use sequenceFrom instead.", ReplaceWith("sequenceFrom(builderAction)"), level = DeprecationLevel.WARNING)
-public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iteratorFrom(builderAction) }
+@Deprecated("Use sequence instead.", ReplaceWith("sequence(builderAction)"), level = DeprecationLevel.WARNING)
+public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Unit): Sequence<T> = Sequence { iterator(builderAction) }
 
 /**
  * Builds an [Iterator] lazily yielding values one by one.
@@ -34,21 +34,21 @@ public fun <T> buildSequence(builderAction: suspend SequenceBuilder<T>.() -> Uni
  * @sample samples.collections.Iterables.Building.iterable
  */
 @SinceKotlin("1.3")
-public fun <T> iteratorFrom(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> {
+public fun <T> iterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> {
     val iterator = SequenceBuilderIterator<T>()
     iterator.nextStep = builderAction.createCoroutineUnintercepted(receiver = iterator, completion = iterator)
     return iterator
 }
 
 @SinceKotlin("1.3")
-@Deprecated("Use iteratorFrom instead.", ReplaceWith("iteratorFrom(builderAction)"), level = DeprecationLevel.WARNING)
-public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> = iteratorFrom(builderAction)
+@Deprecated("Use iterator instead.", ReplaceWith("iterator(builderAction)"), level = DeprecationLevel.WARNING)
+public fun <T> buildIterator(builderAction: suspend SequenceBuilder<T>.() -> Unit): Iterator<T> = iterator(builderAction)
 
 /**
  * Builder for a [Sequence] or an [Iterator], provides [yield] and [yieldAll] suspension functions.
  *
- * @see sequenceFrom
- * @see iteratorFrom
+ * @see sequence
+ * @see iterator
  *
  * @sample samples.collections.Sequences.Building.buildSequenceYieldAll
  * @sample samples.collections.Sequences.Building.buildFibonacciSequence
