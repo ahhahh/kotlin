@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.incremental
 
+import org.jetbrains.kotlin.build.DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 import org.jetbrains.kotlin.build.GeneratedFile
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
@@ -35,8 +36,6 @@ import org.jetbrains.kotlin.progress.CompilationCanceledStatus
 import java.io.File
 import java.util.*
 
-val DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET = setOf("kt", "kts")
-
 abstract class IncrementalCompilerRunner<
     Args : CommonCompilerArguments,
     CacheManager : IncrementalCachesManager<*>
@@ -52,7 +51,7 @@ abstract class IncrementalCompilerRunner<
     protected val cacheDirectory = File(workingDir, cacheDirName)
     protected val dirtySourcesSinceLastTimeFile = File(workingDir, DIRTY_SOURCES_FILE_NAME)
     protected val lastBuildInfoFile = File(workingDir, LAST_BUILD_INFO_FILE_NAME)
-    protected open val kotlinSourceFilesExtensions: Set<String> = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET
+    protected open val kotlinSourceFilesExtensions: List<String> = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 
     protected abstract fun isICEnabled(): Boolean
     protected abstract fun createCacheManager(args: Args): CacheManager

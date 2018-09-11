@@ -11,7 +11,7 @@ import java.io.File
 class DirtyFilesContainer(
     private val caches: IncrementalCachesManager<*>,
     private val reporter: ICReporter,
-    private val sourceFilesExtensions: Set<String>
+    private val sourceFilesExtensions: List<String>
 ) {
     private val myDirtyFiles = HashSet<File>()
 

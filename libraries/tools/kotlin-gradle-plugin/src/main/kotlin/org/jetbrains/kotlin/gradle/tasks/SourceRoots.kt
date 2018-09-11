@@ -22,7 +22,7 @@ internal sealed class SourceRoots(val kotlinSourceFiles: List<File>) {
 
     class ForJvm(kotlinSourceFiles: List<File>, val javaSourceRoots: Set<File>) : SourceRoots(kotlinSourceFiles) {
         companion object {
-            fun create(taskSource: FileTree, sourceRoots: FilteringSourceRootsContainer, sourceFilesExtensions: Set<String>): ForJvm {
+            fun create(taskSource: FileTree, sourceRoots: FilteringSourceRootsContainer, sourceFilesExtensions: List<String>): ForJvm {
                 val kotlinSourceFiles = (taskSource as Iterable<File>).filter { it.isKotlinFile(sourceFilesExtensions) }
                 val javaSourceRoots = findRootsForSources(
                         sourceRoots.sourceRoots, taskSource.filter(File::isJavaFile))
@@ -53,7 +53,7 @@ internal sealed class SourceRoots(val kotlinSourceFiles: List<File>) {
 
     class KotlinOnly(kotlinSourceFiles: List<File>) : SourceRoots(kotlinSourceFiles) {
         companion object {
-            fun create(taskSource: FileTree, sourceFilesExtensions: Set<String>) =
+            fun create(taskSource: FileTree, sourceFilesExtensions: List<String>) =
                 KotlinOnly((taskSource as Iterable<File>).filter { it.isKotlinFile(sourceFilesExtensions) })
         }
     }

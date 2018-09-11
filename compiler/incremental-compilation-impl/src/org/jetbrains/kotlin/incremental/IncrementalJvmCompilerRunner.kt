@@ -22,6 +22,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiJavaFile
+import org.jetbrains.kotlin.build.DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 import org.jetbrains.kotlin.build.GeneratedFile
 import org.jetbrains.kotlin.build.GeneratedJvmClass
 import org.jetbrains.kotlin.build.JvmSourceRoot
@@ -56,7 +57,7 @@ fun makeIncrementally(
         messageCollector: MessageCollector = MessageCollector.NONE,
         reporter: ICReporter = EmptyICReporter
 ) {
-    val kotlinExtensions = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET
+    val kotlinExtensions = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
     val allExtensions = kotlinExtensions + "java"
     val rootsWalk = sourceRoots.asSequence().flatMap { it.walk() }
     val files = rootsWalk.filter(File::isFile)
@@ -107,7 +108,7 @@ class IncrementalJvmCompilerRunner(
     buildHistoryFile: File,
     localStateDirs: Collection<File>,
     private val modulesApiHistory: ModulesApiHistory,
-    override val kotlinSourceFilesExtensions: Set<String> = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS_SET
+    override val kotlinSourceFilesExtensions: List<String> = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 ) : IncrementalCompilerRunner<K2JVMCompilerArguments, IncrementalJvmCachesManager>(
     workingDir,
     "caches-jvm",

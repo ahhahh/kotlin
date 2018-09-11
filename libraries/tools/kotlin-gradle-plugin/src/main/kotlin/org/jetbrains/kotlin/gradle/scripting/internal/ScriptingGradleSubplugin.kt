@@ -68,7 +68,7 @@ open class CalculateScriptExtensionsTask : DefaultTask() {
                 }
                 if (extensions.isNotEmpty()) {
                     project.logger.info("kotlin scripting plugin: Add new extensions to the sourceset $project.$sourceSet: $extensions")
-                    kotlinSourceSet.sourceFilesExtensions(*extensions.toTypedArray())
+                    kotlinSourceSet.customSourceFilesExtensions(*extensions.toTypedArray())
                 }
             }
         } else {

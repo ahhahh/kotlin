@@ -16,6 +16,7 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.incremental.IncrementalTaskInputs
+import org.jetbrains.kotlin.build.DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.CommonToolArguments
@@ -157,8 +158,8 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
     private val sourceFilesExtensionsSources: MutableList<Iterable<String>> = mutableListOf()
 
     @get:Input
-    val sourceFilesExtensions: Set<String>
-        get() = sourceFilesExtensionsSources.flatMapTo(linkedSetOf("kt", "kts")) { it }
+    val sourceFilesExtensions: List<String>
+        get() = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS + sourceFilesExtensionsSources.flatMap { it }
 
     internal fun sourceFilesExtensions(extensions: Iterable<String>) {
         sourceFilesExtensionsSources.add(extensions)
