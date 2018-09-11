@@ -72,7 +72,7 @@ abstract class AbstractKotlinCompilation(
     open fun addSourcesToCompileTask(sourceSet: KotlinSourceSet, addAsCommonSources: Boolean) {
         (target.project.tasks.getByName(compileKotlinTaskName) as AbstractKotlinCompile<*>).apply {
             source(sourceSet.kotlin)
-            sourceFilesExtensions(sourceSet.sourceFilesExtensions)
+            sourceFilesExtensions(Iterable { sourceSet.sourceFilesExtensions.iterator() })
             if (addAsCommonSources) {
                 commonSourceSet += sourceSet.kotlin
             }

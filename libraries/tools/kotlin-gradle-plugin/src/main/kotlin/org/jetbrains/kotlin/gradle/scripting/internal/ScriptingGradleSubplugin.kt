@@ -5,14 +5,16 @@
 
 package org.jetbrains.kotlin.gradle.scripting.internal
 
+import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginConvention
-import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.*
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.scripting.ScriptingExtension
 import org.jetbrains.kotlin.gradle.tasks.GradleMessageCollector
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.script.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.compiler.plugin.ScriptDefinitionsFromClasspathDiscoverySource
 
@@ -24,29 +26,55 @@ class ScriptingGradleSubplugin : Plugin<Project> {
     override fun apply(project: Project) {
 
         project.afterEvaluate {
-            val javaPluginConvention = project.convention.findPlugin(JavaPluginConvention::class.java)
-            val messageCollector = GradleMessageCollector(project.logger)
-            if (javaPluginConvention?.sourceSets?.isEmpty() == false) {
-                for (sourceSet: SourceSet in javaPluginConvention.sourceSets) {
-                    if (sourceSet.name == "main" || sourceSet.name == "test") {
-                        val classpath = sourceSet.runtimeClasspath.files.toList()
-                        val definitions = ScriptDefinitionsFromClasspathDiscoverySource(classpath, emptyMap(), messageCollector).definitions
-                        val kotlinSourceSet = sourceSet.getConvention(KOTLIN_DSL_NAME) as? KotlinSourceSet
-                        if (kotlinSourceSet == null) {
-                            project.logger.warn("kotlin scripting plugin: kotlin source set not found: $project.$sourceSet")
-                            continue
-                        }
-                        val extensions = definitions.mapTo(arrayListOf(), KotlinScriptDefinition::fileExtension)
-                        if (extensions.isNotEmpty()) {
-                            project.logger.info("kotlin scripting plugin: Add new extensions to the sourceset $project.$sourceSet: $extensions")
-                            kotlinSourceSet.sourceFilesExtensions(*extensions.toTypedArray())
-                        }
-                    }
+
+            project.tasks.all { task ->
+                if (task is KotlinCompile) {
+                    val extensionsTask =
+                        project.tasks.create("${task.name}-scriptExtensions", CalculateScriptExtensionsTask::class.java)
+                    extensionsTask.kotlinCompile = task
+                    task.dependsOn.add(extensionsTask)
                 }
-            } else {
-                project.logger.warn("kotlin scripting plugin: applied to a non-JVM project $project")
             }
         }
+    }
+}
+
+@CacheableTask
+open class CalculateScriptExtensionsTask : DefaultTask() {
+
+    internal var kotlinCompile: KotlinCompile? = null
+
+    @get:Classpath @get:InputFiles
+    val compileClasspath
+        get() = kotlinCompile!!.compileClasspath
+
+//    @get:OutputFile
+//    val customExtensionsFile: File
+//        get() = File(File(project.buildDir, KOTLIN_BUILD_DIR_NAME), "known-scripts-filename-extensions.txt")
+
+    @TaskAction
+    fun findKnownScriptExtensions() {
+        val javaPluginConvention = project.convention.findPlugin(JavaPluginConvention::class.java)
+        val messageCollector = GradleMessageCollector(project.logger)
+        if (javaPluginConvention?.sourceSets?.isEmpty() == false) {
+            for (sourceSet: SourceSet in javaPluginConvention.sourceSets) {
+                val definitions =
+                    ScriptDefinitionsFromClasspathDiscoverySource(compileClasspath.toList(), emptyMap(), messageCollector).definitions
+                val extensions = definitions.mapTo(arrayListOf(), KotlinScriptDefinition::fileExtension)
+                val kotlinSourceSet = sourceSet.getConvention(KOTLIN_DSL_NAME) as? KotlinSourceSet
+                if (kotlinSourceSet == null) {
+                    project.logger.warn("kotlin scripting plugin: kotlin source set not found: $project.$sourceSet")
+                    continue
+                }
+                if (extensions.isNotEmpty()) {
+                    project.logger.info("kotlin scripting plugin: Add new extensions to the sourceset $project.$sourceSet: $extensions")
+                    kotlinSourceSet.sourceFilesExtensions(*extensions.toTypedArray())
+                }
+            }
+        } else {
+            project.logger.warn("kotlin scripting plugin: applied to a non-JVM project $project")
+        }
+//        customExtensionsFile.writeText(extensions.joinToString("\n"))
     }
 }
 

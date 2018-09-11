@@ -54,7 +54,8 @@ class DefaultKotlinSourceSet(
 
     override val kotlin: SourceDirectorySet = createDefaultSourceDirectorySet(name + " Kotlin source", fileResolver).apply {
         filter.include("**/*.java")
-        sourceFilesExtensions("kt", "kts")
+        filter.include("**/*.kt")
+        filter.include("**/*.kts")
     }
 
     override val languageSettings: LanguageSettingsBuilder = DefaultLanguageSettingsBuilder()
@@ -91,7 +92,7 @@ class DefaultKotlinSourceSet(
 
     override fun toString(): String = "source set $name"
 
-    private val knownFileExtensionsSet = mutableSetOf<String>()
+    private val knownFileExtensionsSet = mutableSetOf("kt", "kts")
 
     override val sourceFilesExtensions: Set<String> get() = knownFileExtensionsSet
 

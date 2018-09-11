@@ -154,11 +154,14 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
         get() = (classpath + additionalClasspath)
                 .filterTo(LinkedHashSet(), File::exists)
 
-    private val sourceFilesExtensionsSet: MutableSet<String> = linkedSetOf("kt", "kts")
+    private val sourceFilesExtensionsSources: MutableList<Iterable<String>> = mutableListOf()
 
-    val sourceFilesExtensions: Set<String> get() = sourceFilesExtensionsSet
+    @get:Input
+    val sourceFilesExtensions: Set<String>
+        get() = sourceFilesExtensionsSources.flatMapTo(linkedSetOf("kt", "kts")) { it }
+
     internal fun sourceFilesExtensions(extensions: Iterable<String>) {
-        sourceFilesExtensionsSet.addAll(extensions)
+        sourceFilesExtensionsSources.add(extensions)
     }
 
     private val kotlinExt: KotlinProjectExtension
