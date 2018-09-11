@@ -1,0 +1,18 @@
+package test
+
+public final annotation class Ann : kotlin.Annotation {
+    /*primary*/ public constructor Ann()
+}
+
+public final class Test {
+    /*primary*/ @test.Ann public constructor Test(/*0*/ @test.Ann z: test.Z)
+    @test.Ann public constructor Test(/*0*/ z: test.Z, /*1*/ @test.Ann a: kotlin.Int)
+    public final val z: test.Z
+        public final fun <get-z>(): test.Z
+}
+
+public final inline class Z {
+    /*primary*/ public constructor Z(/*0*/ x: kotlin.Int)
+    public final val x: kotlin.Int
+        public final fun <get-x>(): kotlin.Int
+}

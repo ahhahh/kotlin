@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.resolve.constants.ConstantValue;
 import org.jetbrains.kotlin.resolve.constants.KClassValue;
 import org.jetbrains.kotlin.resolve.inline.InlineUtil;
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes;
+import org.jetbrains.kotlin.resolve.jvm.InlineClassManglingRulesKt;
 import org.jetbrains.kotlin.resolve.jvm.RuntimeAssertionInfo;
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin;
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOriginKind;
@@ -75,6 +76,7 @@ import static org.jetbrains.kotlin.descriptors.annotations.AnnotationUtilKt.isEf
 import static org.jetbrains.kotlin.resolve.DescriptorToSourceUtils.getSourceFromDescriptor;
 import static org.jetbrains.kotlin.resolve.DescriptorUtils.*;
 import static org.jetbrains.kotlin.resolve.jvm.AsmTypes.OBJECT_TYPE;
+import static org.jetbrains.kotlin.resolve.jvm.InlineClassManglingRulesKt.shouldHideConstructorDueToInlineClassTypeValueParameters;
 import static org.jetbrains.kotlin.resolve.jvm.annotations.JvmAnnotationUtilKt.hasJvmDefaultAnnotation;
 import static org.jetbrains.kotlin.types.expressions.ExpressionTypingUtils.*;
 import static org.jetbrains.org.objectweb.asm.Opcodes.*;
@@ -225,13 +227,10 @@ public class FunctionCodegen {
                         asmMethod.getDescriptor()
                 );
 
-        if (CodegenContextUtil.isImplementationOwner(owner, functionDescriptor)) {
-            v.getSerializationBindings().put(METHOD_FOR_FUNCTION, CodegenUtilKt.unwrapFrontendVersion(functionDescriptor), asmMethod);
-        }
+        recordMethodForFunctionIfAppropriate(functionDescriptor, asmMethod);
 
-        AnnotationCodegen.forMethod(mv, memberCodegen, typeMapper).genAnnotations(functionDescriptor, asmMethod.getReturnType());
+        generateMethodAnnotationsIfRequired(functionDescriptor, asmMethod, jvmSignature, mv);
 
-        generateParameterAnnotations(functionDescriptor, mv, jvmSignature, memberCodegen, state);
         GenerateJava8ParameterNamesKt.generateParameterNames(functionDescriptor, mv, jvmSignature, state, (flags & ACC_SYNTHETIC) != 0);
 
         if (contextKind != OwnerKind.ERASED_INLINE_CLASS) {
@@ -264,6 +263,49 @@ public class FunctionCodegen {
                     origin, functionDescriptor, methodContext, strategy, mv, jvmSignature, staticInCompanionObject
             );
         }
+    }
+
+    private void recordMethodForFunctionIfAppropriate(
+            @NotNull FunctionDescriptor functionDescriptor,
+            Method asmMethod
+    ) {
+        FunctionDescriptor functionForMethod = null;
+        if (InlineClassManglingRulesKt.shouldHideConstructorDueToInlineClassTypeValueParameters(functionDescriptor)) {
+            if (functionDescriptor instanceof AccessorForConstructorDescriptor) {
+                functionForMethod = ((AccessorForConstructorDescriptor) functionDescriptor).getCalleeDescriptor();
+            }
+        }
+        else {
+            if (CodegenContextUtil.isImplementationOwner(owner, functionDescriptor)) {
+                functionForMethod = CodegenUtilKt.unwrapFrontendVersion(functionDescriptor);
+            }
+        }
+        if (functionForMethod != null) {
+            v.getSerializationBindings().put(METHOD_FOR_FUNCTION, functionForMethod, asmMethod);
+        }
+    }
+
+    private void generateMethodAnnotationsIfRequired(
+            @NotNull FunctionDescriptor functionDescriptor,
+            @NotNull Method asmMethod,
+            @NotNull JvmMethodGenericSignature jvmSignature,
+            @NotNull MethodVisitor mv
+    ) {
+        FunctionDescriptor annotationsOwner;
+        if (shouldHideConstructorDueToInlineClassTypeValueParameters(functionDescriptor)) {
+            if (functionDescriptor instanceof AccessorForConstructorDescriptor) {
+                annotationsOwner = ((AccessorForConstructorDescriptor) functionDescriptor).getCalleeDescriptor();
+            }
+            else {
+                return;
+            }
+        }
+        else {
+            annotationsOwner = functionDescriptor;
+        }
+
+        AnnotationCodegen.forMethod(mv, memberCodegen, typeMapper).genAnnotations(annotationsOwner, asmMethod.getReturnType());
+        generateParameterAnnotations(annotationsOwner, mv, jvmSignature, memberCodegen, state);
     }
 
     @NotNull
