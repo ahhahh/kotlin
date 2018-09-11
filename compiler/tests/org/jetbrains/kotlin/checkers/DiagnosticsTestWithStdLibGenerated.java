@@ -1513,6 +1513,11 @@ public class DiagnosticsTestWithStdLibGenerated extends AbstractDiagnosticsTestW
             runTest("compiler/testData/diagnostics/testsWithStdLib/coroutines/modifierFormForNonBuiltInSuspendWithAnyParameter.kt");
         }
 
+        @TestMetadata("monitor.kt")
+        public void testMonitor() throws Exception {
+            runTest("compiler/testData/diagnostics/testsWithStdLib/coroutines/monitor.kt");
+        }
+
         @TestMetadata("noDefaultCoroutineImports.kt")
         public void testNoDefaultCoroutineImports_1_2() throws Exception {
             runTestWithPackageReplacement("compiler/testData/diagnostics/testsWithStdLib/coroutines/noDefaultCoroutineImports.kt", "kotlin.coroutines.experimental");

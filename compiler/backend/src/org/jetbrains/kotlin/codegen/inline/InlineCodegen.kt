@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.codegen.inline
 import com.intellij.psi.PsiElement
 import com.intellij.util.ArrayUtil
 import org.jetbrains.kotlin.backend.common.isBuiltInIntercepted
+import org.jetbrains.kotlin.backend.common.isTopLevelInPackage
 import org.jetbrains.kotlin.builtins.BuiltInsPackageFragment
 import org.jetbrains.kotlin.codegen.*
 import org.jetbrains.kotlin.codegen.AsmUtil.getMethodAsmFlags
@@ -19,6 +20,8 @@ import org.jetbrains.kotlin.codegen.coroutines.createMethodNodeForSuspendCorouti
 import org.jetbrains.kotlin.codegen.coroutines.isBuiltInSuspendCoroutineUninterceptedOrReturnInJvm
 import org.jetbrains.kotlin.codegen.intrinsics.bytecode
 import org.jetbrains.kotlin.codegen.intrinsics.classId
+import org.jetbrains.kotlin.codegen.optimization.common.ControlFlowGraph
+import org.jetbrains.kotlin.codegen.optimization.common.asSequence
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
 import org.jetbrains.kotlin.config.isReleaseCoroutines
@@ -244,7 +247,12 @@ abstract class InlineCodegen<out T : BaseExpressionCodegen>(
             }
         }
         val reificationResult = reifiedTypeInliner.reifyInstructions(node)
-        generateClosuresBodies()
+        state.globalCoroutinesContext.pushArgumentIndexes(findInlineLambdasInsideMonitor(node))
+        try {
+            generateClosuresBodies()
+        } finally {
+            state.globalCoroutinesContext.popArgumentIndexes()
+        }
 
         //through generation captured parameters will be added to invocationParamBuilder
         putClosureParametersOnStack()
@@ -301,6 +309,45 @@ abstract class InlineCodegen<out T : BaseExpressionCodegen>(
         return result
     }
 
+    private fun findInlineLambdasInsideMonitor(node: MethodNode): Set<Int> {
+        val sources = MethodInliner.analyzeMethodNodeBeforeInline(node)
+
+        val cfg = ControlFlowGraph.build(node)
+        val monitorDepthMap = hashMapOf<AbstractInsnNode, Int>()
+        val result = hashSetOf<Int>()
+
+        fun addMonitorDepthToSuccs(index: Int, depth: Int) {
+            val insn = node.instructions[index]
+            monitorDepthMap[insn] = depth
+            val newDepth = when (insn.opcode) {
+                Opcodes.MONITORENTER -> depth + 1
+                Opcodes.MONITOREXIT -> depth - 1
+                else -> depth
+            }
+            for (succIndex in cfg.getSuccessorsIndices(index)) {
+                if (monitorDepthMap[node.instructions[succIndex]] == null) {
+                    addMonitorDepthToSuccs(succIndex, newDepth)
+                }
+            }
+        }
+
+        addMonitorDepthToSuccs(0, 0)
+
+        for (insn in node.instructions.asSequence()) {
+            if (insn !is MethodInsnNode) continue
+            if (!isInvokeOnLambda(insn.owner, insn.name)) continue
+            if (monitorDepthMap[insn]?.let { it > 0 } != true) continue
+            val frame = sources[node.instructions.indexOf(insn)] ?: continue
+            for (source in frame.getStack(frame.stackSize - Type.getArgumentTypes(insn.desc).size - 1).insns) {
+                if (source.opcode == Opcodes.ALOAD) {
+                    result.add((source as VarInsnNode).`var`)
+                }
+            }
+        }
+
+        return result
+    }
+
     private fun isInlinedToInlineFunInKotlinRuntime(): Boolean {
         val codegen = this.codegen as? ExpressionCodegen ?: return false
         val caller = codegen.context.functionDescriptor
@@ -310,8 +357,16 @@ abstract class InlineCodegen<out T : BaseExpressionCodegen>(
     }
 
     private fun generateClosuresBodies() {
+        val parameters = invocationParamBuilder.buildParameters()
+
         for (info in expressionMap.values) {
-            info.generateLambdaBody(sourceCompiler, reifiedTypeInliner)
+            val index = parameters.find { it.lambda == info }?.index
+            state.globalCoroutinesContext.enterMonitorIfNeeded(index)
+            try {
+                info.generateLambdaBody(sourceCompiler, reifiedTypeInliner)
+            } finally {
+                state.globalCoroutinesContext.exitMonitorIfNeeded(index)
+            }
         }
     }
 
@@ -685,9 +740,16 @@ class PsiInlineCodegen(
             generateStub(resolvedCall, codegen)
             return
         }
+        val isSynchronized = resolvedCall?.resultingDescriptor?.isTopLevelInPackage("synchronized", "kotlin") == true
+        if (isSynchronized) {
+            state.globalCoroutinesContext.enterMonitor()
+        }
         try {
             performInline(resolvedCall?.typeArguments, callDefault, codegen)
         } finally {
+            if (isSynchronized) {
+                state.globalCoroutinesContext.exitMonitor()
+            }
             state.globalInlineContext.exitFromInliningOf(resolvedCall)
         }
     }
